@@ -55,3 +55,43 @@ class NewVisitorTest(LiveServerTestCase):
         # The page updates again, and now shows both items on their list
         self.wait_for_row_in_list_table("1: Buy peacock feathers")
         self.wait_for_row_in_list_table("2: Use peacock feathers to make a fly")
+
+    def test_multiple_users_can_start_lists_at_different_urls(self):
+        # User 1 starts a todo list
+        self.browser.get(self.live_server_url)
+        inputbox = self.browser.find_element(By.ID, 'id_new_item')
+        inputbox.send_keys("Buy peacock feathers")
+        inputbox.send_keys(Keys.ENTER)
+        self.wait_for_row_in_list_table("1: Buy peacock feathers")
+
+        # User 1 notices that her list has a unique URL
+        user_1_list_url = self.browser.current_url
+        self.assertRegex(user_1_list_url, "/lists/.+" )
+        
+        # Now. User 2 comes along to the site
+        
+        ## We delate all the browser's cookies
+        ## as a way of simulating a brand new user session
+        self.browser.delete_all_cookies()
+        
+        # User 2 visits the home page. There is no sign of User 1's list
+        self.browser.get(self.live_server_url)
+        page_text = self.browser.find_element(By.TAG_NAME, "body").text
+        self.assertNotIn("Buy peacock feathers", page_text)
+        self.assertNotIn('Make a fly"', page_text)
+        
+        # User 2 starts a new list by entering a new item.
+        inputbox = self.browser.find_element(By.ID, 'id_new_item')
+        inputbox.send_keys("Buy milk")
+        inputbox.send_keys(Keys.ENTER)
+        self.wait_for_row_in_list_table("1: Buy milk")
+        
+        # User 2 gets their own unique URL
+        user_2_list_url = self.browser.current_url
+        self.assertRegex(user_2_list_url, "/lists/.+")
+        self.assertNotEqual(user_2_list_url, user_1_list_url)
+        
+        # Again, there is no trace of user 1's list
+        page_text = self.browser.find_element(By.TAG_NAME, "body").text
+        self.assertNotIn("Buy peacock feathers", page_text)
+        self.assertIn('Buy milk', page_text)
